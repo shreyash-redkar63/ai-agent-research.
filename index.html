@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ayritech Business Solutions — AI Assistant</title>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ── Auth Overlay ─────────────────────────────────────── -->
+  <div id="authOverlay" class="modal-overlay visible">
+    <div class="modal-content auth-card">
+      <h2 class="auth-title">Ayritech AI</h2>
+      <p class="auth-sub">Please login or create an account to continue.</p>
+
+      <div class="auth-fields">
+        <input type="email"    id="loginEmail" placeholder="Email address"        class="chat-input">
+        <input type="password" id="loginPass"  placeholder="Password (min. 6 chars)" class="chat-input">
+        <div id="authError" class="auth-error"></div>
+
+        <div class="auth-btns">
+          <button class="btn btn-primary"   onclick="handleLogin()">Login</button>
+          <button class="btn btn-secondary" onclick="handleSignup()">Sign Up</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Background grid ─────────────────────────────────── -->
+  <div class="grid-bg"></div>
+
+  <!-- ── Main Layout ─────────────────────────────────────── -->
+  <div class="page">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="brand">
+          <div class="brand-icon">AY</div>
+          <div>
+            <div class="brand-name">Ayritech</div>
+            <div class="brand-sub">Business Solutions</div>
+          </div>
+        </div>
+        <div class="status-pill">
+          <div class="status-dot"></div>
+          AI Online · Avg. 3s reply
+        </div>
+      </div>
+
+      <div class="sidebar-section">Quick Topics</div>
+
+      <div class="topic-list">
+        <div class="topic-item active" onclick="sendTopic(event, 'Website Development')">
+          <div class="topic-icon">💻</div> Website Development
+        </div>
+        <div class="topic-item" onclick="sendTopic(event, 'UI/UX Design')">
+          <div class="topic-icon">🎨</div> UI/UX Design
+        </div>
+        <div class="topic-item" onclick="sendTopic(event, 'Digital Marketing')">
+          <div class="topic-icon">📈</div> Digital Marketing
+        </div>
+        <div class="topic-item" onclick="sendTopic(event, 'Mobile App Development')">
+          <div class="topic-icon">📱</div> Mobile App Development
+        </div>
+        <div class="topic-item" onclick="sendTopic(event, 'SEO Services')">
+          <div class="topic-icon">🔍</div> SEO Services
+        </div>
+        <div class="topic-item" onclick="sendTopic(event, 'Business Consulting')">
+          <div class="topic-icon">💼</div> Business Consulting
+        </div>
+        <div class="topic-item" onclick="sendTopic(event, 'Software Solutions')">
+          <div class="topic-icon">⚙️</div> Software Solutions
+        </div>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="agent-card">
+          <div class="agent-card-row">
+            <div class="agent-avatar">👤</div>
+            <div class="agent-info">
+              <div class="agent-name" id="userNameDisplay">User</div>
+              <div class="agent-role"  id="agentStatus">Human Agent Available</div>
+            </div>
+            <button class="escalate-btn" onclick="showEscalate()">Connect →</button>
+          </div>
+          <button class="btn btn-secondary signout-btn" onclick="auth.signOut()">Sign Out</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- CHAT AREA -->
+    <div class="chat-area">
+      <div class="chat-header">
+        <div>
+          <div class="chat-title">AI <span>Assistant</span></div>
+          <div class="chat-meta">Powered by Ayritech Business Solutions</div>
+        </div>
+        <div class="header-actions">
+          <button class="icon-btn" title="Chat History"      onclick="toggleHistory()">📜</button>
+          <button class="icon-btn" title="Clear chat"        onclick="clearChat()">🗑</button>
+          <button class="icon-btn" title="Rate experience"   onclick="showRating()">⭐</button>
+          <button class="icon-btn" title="Escalate to human" onclick="showEscalate()">👤</button>
+        </div>
+      </div>
+
+      <div class="messages" id="messages"></div>
+
+      <div class="quick-replies" id="quickReplies">
+        <button class="qr-btn" onclick="quickSend('Tell me about your website development services')">💻 Website Services</button>
+        <button class="qr-btn" onclick="quickSend('I want UI/UX design for my business')">🎨 UI/UX Design</button>
+        <button class="qr-btn" onclick="quickSend('Tell me about SEO and digital marketing')">📈 Digital Marketing</button>
+        <button class="qr-btn" onclick="quickSend('I need a mobile application')">📱 Mobile Apps</button>
+      </div>
+
+      <div class="typing-indicator hidden" id="typingIndicator">
+        <div class="msg-avatar bot-avatar" style="width:30px;height:30px;border-radius:50%;font-size:13px;display:flex;align-items:center;justify-content:center;">🤖</div>
+        <div class="typing-bubble">
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+        </div>
+      </div>
+
+      <div class="input-area">
+        <div class="input-row">
+          <textarea id="userInput"
+            placeholder="Ask me about Ayritech services, projects, websites, apps, or business solutions..."
+            rows="1"
+            onkeydown="handleKey(event)"
+            oninput="autoResize(this)">
+          </textarea>
+          <button id="sendBtn" class="send-btn" onclick="sendMessage()">
+            <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+          </button>
+        </div>
+        <div class="input-hint">AI may make mistakes · Complex issues will be escalated to a human agent</div>
+      </div>
+    </div>
+  </div><!-- /.page -->
+
+  <!-- ── Chat History Panel ───────────────────────────────── -->
+  <div id="historyPanel" class="history-panel" style="display:none;">
+    <div class="history-header">
+      <h3 class="history-title">Chat History</h3>
+      <button onclick="closeHistory()" class="history-close">✕</button>
+    </div>
+    <div id="historyContent" class="history-content"></div>
+  </div>
+
+  <!-- ── Escalation Modal ─────────────────────────────────── -->
+  <div class="modal-overlay" id="escalateModal">
+    <div class="modal">
+      <div class="modal-title">Connect to Human Agent</div>
+      <div class="modal-body">A live support agent will join the conversation. Average wait time is <strong>2–4 minutes</strong>. Your chat history will be shared with the agent.</div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary"   onclick="escalateToHuman()">Connect Now</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Rating Modal ─────────────────────────────────────── -->
+  <div class="modal-overlay" id="ratingModal">
+    <div class="modal">
+      <div class="modal-title">Rate Your Experience</div>
+      <div class="modal-body">How satisfied are you with the support you received today?</div>
+      <div class="rating-row">
+        <button class="rating-btn" onclick="submitRating('😠','Poor')">😠</button>
+        <button class="rating-btn" onclick="submitRating('😐','Okay')">😐</button>
+        <button class="rating-btn" onclick="submitRating('🙂','Good')">🙂</button>
+        <button class="rating-btn" onclick="submitRating('😄','Great')">😄</button>
+        <button class="rating-btn" onclick="submitRating('🤩','Excellent')">🤩</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Scripts (order matters!) ────────────────────────── -->
+  <!-- 1. Keys first -->
+  <script src="config.js"></script>
+  <!-- 2. App logic (uses constants from config.js) -->
+  <script src="app.js"></script>
+
+</body>
+</html>
